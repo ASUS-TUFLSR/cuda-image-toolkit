@@ -7,7 +7,7 @@ Learning project exploring CUDA C++ for image processing, built after completing
 - [x] Vector add (sanity check for CUDA pipeline)
 - [x] Grayscale conversion
 - [x] Box blur (shared memory)
-- [ ] Sobel edge detection
+- [x] Sobel edge detection
 - [ ] CPU vs GPU benchmarking
 
 ## Requirements
