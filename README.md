@@ -26,7 +26,6 @@ Grayscale conversion, 1054x550 image, averaged over 100 runs:
 |---|---|---|---|
 | ![input](images/input.png) | ![gray](images/output_gray.png) | ![blur](images/output_blur.png) | ![edges](images/output_edges.png) |
 
-
 ## Requirements
 
 - NVIDIA GPU + CUDA Toolkit
@@ -53,3 +52,18 @@ Grayscale conversion, 1054x550 image, averaged over 100 runs:
 ## Example
 
 Input → grayscale output using a custom CUDA kernel (2D thread indexing, one thread per pixel).
+
+## Now Extending the benchmark to blur/edge detection to heavier kernels
+- Created benchmark_all.cu this will add CPU versions of blur/edge detection then 3x all three CPUvsGPU
+- Run these commands:  
+- nvcc src/benchmark_all.cu -o benchmark_all.exe 
+- benchmark_all.exe
+
+## Results of above test
+Image: 1054x550
+Kernel               |    CPU (ms)    |  GPU (ms)  |  Speedup
+Grayscale            |       9.000    |    0.032   |  285.2x
+Box Blur (7x7)       |     426.000    |    0.098   |  4331.4x
+Sobel Edge           |      74.000    |    0.042   |  1751.9x
+
+- Now here blur jumped so much higher than grayscale: each pixel now does 49 reads + sum instead of grayscale's 3 reads + weighted sum — CPU cost scales up hard (426ms!) since it's doing that sequentially, one pixel at a time. GPU barely notices because thousands of cores absorb that extra per-pixel work in parallel..
