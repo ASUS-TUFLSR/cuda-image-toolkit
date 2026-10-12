@@ -59,6 +59,15 @@ __global__ void blurKernel(unsigned char *input, unsigned char *output, int widt
         tile[ty - BLUR_RADIUS][tx] = clampedRead(x, y - BLUR_RADIUS);
         tile[ty + BLOCK_SIZE][tx] = clampedRead(x, y + BLOCK_SIZE);
     }
+
+    // Corner halos (the window reads diagonals too)
+    if (threadIdx.x < BLUR_RADIUS && threadIdx.y < BLUR_RADIUS)
+    {
+        tile[ty - BLUR_RADIUS][tx - BLUR_RADIUS] = clampedRead(x - BLUR_RADIUS, y - BLUR_RADIUS);
+        tile[ty - BLUR_RADIUS][tx + BLOCK_SIZE] = clampedRead(x + BLOCK_SIZE, y - BLUR_RADIUS);
+        tile[ty + BLOCK_SIZE][tx - BLUR_RADIUS] = clampedRead(x - BLUR_RADIUS, y + BLOCK_SIZE);
+        tile[ty + BLOCK_SIZE][tx + BLOCK_SIZE] = clampedRead(x + BLOCK_SIZE, y + BLOCK_SIZE);
+    }
     __syncthreads();
 
     if (x < width && y < height)
@@ -106,7 +115,8 @@ __global__ void sobelKernel(unsigned char *input, unsigned char *output, int wid
         tile[ty + BLOCK_SIZE][tx - SOBEL_RADIUS] = clampedRead(x - SOBEL_RADIUS, y + BLOCK_SIZE);
         tile[ty + BLOCK_SIZE][tx + BLOCK_SIZE] = clampedRead(x + BLOCK_SIZE, y + BLOCK_SIZE);
     }
-    __syncthreads();
+
+       __syncthreads();
 
     if (x < width && y < height)
     {

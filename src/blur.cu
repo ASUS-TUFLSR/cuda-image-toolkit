@@ -19,10 +19,10 @@
 #define BLOCK_SIZE 16
 #define RADIUS 3 // blur "strength" - 3 means 7x7 window
 
-// Shared memory title = block size + halo on each side (RADIUS on both edges)
+// Shared memory tile = block size + halo on each side (RADIUS on both edges)
 __global__ void blurKernel(unsigned char *input, unsigned char *output, int width, int height)
 {
-    __shared__ unsigned char title[BLOCK_SIZE + 2 * RADIUS][BLOCK_SIZE + 2 * RADIUS];
+    __shared__ unsigned char tile[BLOCK_SIZE + 2 * RADIUS][BLOCK_SIZE + 2 * RADIUS];
 
     int x = blockIdx.x * BLOCK_SIZE + threadIdx.x;
     int y = blockIdx.y * BLOCK_SIZE + threadIdx.y;
@@ -39,18 +39,27 @@ __global__ void blurKernel(unsigned char *input, unsigned char *output, int widt
     };
 
     // Each thread loads its own pixel into shared memory
-    title[ty][tx] = clampedRead(x, y);
+    tile[ty][tx] = clampedRead(x, y);
 
     // Threads on the block's edge also load the halo (surrounding border)
     if (threadIdx.x < RADIUS)
     {
-        title[ty][tx - RADIUS] = clampedRead(x - RADIUS, y);
-        title[ty][tx + BLOCK_SIZE] = clampedRead(x + BLOCK_SIZE, y);
+        tile[ty][tx - RADIUS] = clampedRead(x - RADIUS, y);
+        tile[ty][tx + BLOCK_SIZE] = clampedRead(x + BLOCK_SIZE, y);
     }
     if (threadIdx.y < RADIUS)
     {
-        title[ty - RADIUS][tx] = clampedRead(x, y - RADIUS);
-        title[ty + BLOCK_SIZE][tx] = clampedRead(x, y + BLOCK_SIZE);
+        tile[ty - RADIUS][tx] = clampedRead(x, y - RADIUS);
+        tile[ty + BLOCK_SIZE][tx] = clampedRead(x, y + BLOCK_SIZE);
+    }
+
+    // Corner halos (the window reads diagonals too)
+    if (threadIdx.x < RADIUS && threadIdx.y < RADIUS)
+    {
+        tile[ty - RADIUS][tx - RADIUS] = clampedRead(x - RADIUS, y - RADIUS);
+        tile[ty - RADIUS][tx + BLOCK_SIZE] = clampedRead(x + BLOCK_SIZE, y - RADIUS);
+        tile[ty + BLOCK_SIZE][tx - RADIUS] = clampedRead(x - RADIUS, y + BLOCK_SIZE);
+        tile[ty + BLOCK_SIZE][tx + BLOCK_SIZE] = clampedRead(x + BLOCK_SIZE, y + BLOCK_SIZE);
     }
 
     __syncthreads(); // waiting until all threads fininsh loading shared memory
@@ -63,7 +72,7 @@ __global__ void blurKernel(unsigned char *input, unsigned char *output, int widt
         {
             for (int dx = -RADIUS; dx <= RADIUS; dx++)
             {
-                sum += title[ty + dy][tx + dx];
+                sum += tile[ty + dy][tx + dx];
                 count++;
             }
         }
